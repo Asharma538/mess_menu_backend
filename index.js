@@ -6,6 +6,9 @@ const { default: axios } = require("axios");
 var FormData = require('form-data');
 const fs = require('fs');
 
+
+require('./admin-sdk');
+
 app.listen(3000, function () {
   console.log("Server is running");
 });
