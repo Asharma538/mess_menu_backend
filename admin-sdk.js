@@ -9,21 +9,26 @@ initializeApp({
   });
   
 
-async function sendCustomMessage(topic, msg) {
-  console.log("topic:",topic);
-  console.log("data:",msg);
-    try {
-      const message = {
-        topic: topic,
-        data: {
-          "Breakfast": msg[0] + " " + msg[1]
-        },
-      };
-      const response = await admin.messaging().send(message);
-      console.log('Message sent successfully:', response);
-    } catch (error) {
-      console.error('Error sending message:', error);
-    }
+async function sendCustomMessage(title, msg) {
+
+  const message = {
+    notification: {
+      title: title,
+      body: msg[0] + " " + msg[1],
+    },
+    data: {
+      click_action: 'FLUTTER_NOTIFICATION_CLICK', // Required for onMessageOpenedApp callback
+    },
+    topic: "Menu",
+  };
+  console.log(msg);
+  try {
+    console.log("trying");
+    const response = await admin.messaging().send(message);
+    console.log('Successfully sent notification:', response);
+  } catch (error) {
+    console.error('Error sending notification:', error);
+  }
 }
 
 
@@ -43,21 +48,24 @@ const Menu = db.collection('Menu');
 console.log("running");
 
 
-cron.schedule('* * * * *', async() => {
+cron.schedule('30 7  * * *', async() => {
     console.log('Running scheduled job...');
+    console.log(Date.now());
     const weekday = getWeekDay();
     console.log(weekday);
     const data = await Menu.doc(weekday).get();
     const breakfast = data.data()['Breakfast']; 
     console.log(breakfast[0],breakfast[1]);
-    await sendCustomMessage("Breakfast",breakfast);
+    const Lunch = data.data()['Lunch']; 
+    console.log(Lunch[0],Lunch[1]);
+    await sendCustomMessage("Lunch",Lunch);
 }, {
 scheduled: true,
 timezone: 'Asia/kolkata', // Set your timezone (e.g., 'America/New_York')
 });
 
 
-console.log("hello buddy");
+
 
 
 
