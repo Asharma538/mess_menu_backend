@@ -3,6 +3,7 @@ const { getFirestore, Timestamp, FieldValue, Filter } = require('firebase-admin/
 const serviceAccount = require('./secret_files/serviceAccountKey.json');
 const cron = require('node-cron');
 const admin = require('firebase-admin');
+const { getDoc } = require('firebase/firestore');
 
 initializeApp({
     credential: cert(serviceAccount)
@@ -10,7 +11,6 @@ initializeApp({
   
 
 async function sendCustomMessage(title, msg) {
-
   const message = {
     notification: {
       title: title,
@@ -32,33 +32,88 @@ async function sendCustomMessage(title, msg) {
 }
 
 
+const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 function getWeekDay(){
-    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     let indian_date = new Date().toLocaleString("en-Us", {timeZone: 'Asia/Kolkata'});
     let date = new Date(indian_date);
-    let weekday = daysOfWeek[date.getDay()];
-    return weekday;
+    return date.getDay();
 }
 
 
 
 const db = getFirestore();
 const Menu = db.collection('Menu');
+const Timings = db.collection("Timings");
 
 console.log("running");
+const weekday_number = getWeekDay();
+const weekday = daysOfWeek[weekday_number];
 
 
-cron.schedule('30 7  * * *', async() => {
-    console.log('Running scheduled job...');
-    console.log(Date.now());
-    const weekday = getWeekDay();
-    console.log(weekday);
-    const data = await Menu.doc(weekday).get();
-    const breakfast = data.data()['Breakfast']; 
-    console.log(breakfast[0],breakfast[1]);
-    const Lunch = data.data()['Lunch']; 
-    console.log(Lunch[0],Lunch[1]);
-    await sendCustomMessage("Lunch",Lunch);
+function getStartTime(time_in_string){
+
+  st="";
+  let i=0;
+  while(time_in_string[i]!=':'){
+    st+=time_in_string[i];
+    i++;
+  }
+  
+  end="";
+  i++;
+  while(time_in_string[i]!=' '){
+    end+=time_in_string[i];
+    i++
+  }
+  i++;
+
+  start_time_int = parseInt(st);
+  end_time_int = parseInt(end);
+  if(time_in_string[i]=='P' && start_time_int!=12){
+    start_time_int+=12;
+  }
+  return [start_time_int,end_time_int];
+}
+
+async function scheduleRespectiveMeal(cronExpression,title,msg){
+  cron.schedule(cronExpression,async()=>{
+    await sendCustomMessage(title,msg);
+  })
+}
+
+async function scheduleDaily(){
+  console.log(weekday);
+  const time = (await Timings.doc(weekday).get()).data();
+  const menu = (await Menu.doc(weekday).get()).data();
+
+  const timeBreakfast = getStartTime(time["Breakfast"][0]);
+  const timeLunch = getStartTime(time["Lunch"][0]);
+  const timeSnacks = getStartTime(time["Snacks"][0]);
+  const timeDinner = getStartTime(time["Dinner"][0]);
+
+  console.log(menu);
+  console.log(timeBreakfast,timeLunch,timeSnacks,timeDinner);
+  let indian_date = new Date().toLocaleString("en-Us", {timeZone: 'Asia/Kolkata'});
+  let date = new Date(indian_date);
+
+  const cronExpressionBreakfast = `${timeBreakfast[1]} ${timeBreakfast[0]} ${date.getDate()} ${date.getMonth() + 1} *`; 
+  const cronExpressionLunch = `${timeLunch[1]} ${timeLunch[0]} ${date.getDate()} ${date.getMonth() + 1} *`; 
+  const cronExpressionSnacks = `${timeSnacks[1]} ${timeSnacks[0]} ${date.getDate()} ${date.getMonth() + 1} *`; 
+  const cronExpressionDinner = `${timeDinner[1]} ${timeDinner[0]} ${date.getDate()} ${date.getMonth() + 1} *`; 
+
+
+
+  scheduleRespectiveMeal(cronExpressionBreakfast,"Breakfast",menu["Breakfast"]);
+  scheduleRespectiveMeal(cronExpressionLunch,"Lunch",menu["Lunch"]);
+  scheduleRespectiveMeal(cronExpressionSnacks,"Snacks",menu["Snacks"]);
+  scheduleRespectiveMeal(cronExpressionDinner,"Dinner",menu["Dinner"]);
+  
+}
+
+
+
+cron.schedule('0 6 * * *', async() => {
+  scheduleDaily();
 }, {
 scheduled: true,
 timezone: 'Asia/kolkata', // Set your timezone (e.g., 'America/New_York')
