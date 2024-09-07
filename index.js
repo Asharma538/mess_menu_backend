@@ -6,7 +6,7 @@ const { default: axios } = require("axios");
 var FormData = require('form-data');
 const fs = require('fs');
 const path = require('path');
-
+const xAPIKEY = require('./secret_files/x_api_key.json');
 
 
 require('./admin-sdk');
@@ -35,9 +35,7 @@ app.get("/update",async (req,res)=>{
     method:'post',
     maxBodyLength:Infinity,
     url: 'https://vetwkzas8k.execute-api.us-east-1.amazonaws.com/prod',
-    headers: { 
-      'x-api-key': 'LgVQGDBXXm3RMZ4QQzJRX4ZPVysCziu23fJ72XB9'
-    },
+    headers: xAPIKEY,
     data : data
   })
   .then((res) => {
