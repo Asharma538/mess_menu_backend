@@ -1,13 +1,17 @@
 const express = require("express");
 const app = express();
 const Menu = require('./config');
-const { setDoc,doc, getDoc } = require('firebase/firestore');
+const { setDoc,doc, getDoc} = require('firebase/firestore');
 const { default: axios } = require("axios");
 var FormData = require('form-data');
 const fs = require('fs');
+const path = require('path');
+
 
 
 require('./admin-sdk');
+const admin = require('firebase-admin');
+
 
 app.listen(3000, function () {
   console.log("Server is running");
@@ -23,8 +27,9 @@ app.get("/update",async (req,res)=>{
   const data = new FormData();
   data.append('input', fs.createReadStream('Menu.pdf'));
   data.append('dup_check', 'False');
-  
+
   var menu_json = {};
+
 
   await axios.request({
     method:'post',
@@ -57,8 +62,38 @@ app.get("/update",async (req,res)=>{
         console.log(err);
       });
     }
-    res.send({
-      Success: "Updated the menu",
-      new_menu:menu_json
-    });
+
+
+    uploadMenuPNGImage()
+    .then(()=>{
+      console.log("sucessfully uploaded menu file");
+      res.send({
+        Success: "Updated the menu",
+        menu_json: menu_json
+      });
+    })
+    .catch(err=>{
+      res.send("Menu updated in firestore\n\n\n\n",err);
+    })
+
 });
+
+
+async function uploadMenuPNGImage(){
+  const bucket = admin.storage().bucket("gs://iitj-menu-2507.appspot.com");
+
+  const filePath = path.join(__dirname, 'Menu.png');
+  const destination = "Menu.png"
+
+  await bucket.upload(filePath,{
+    destination: destination,
+    metadata: {
+      contentType: "image/png"
+    }
+  }).then(()=>{
+    return "menu File uploaded";
+  }).catch(err=>{
+    return err;
+  })
+
+}
