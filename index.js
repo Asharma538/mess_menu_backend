@@ -3,7 +3,7 @@ const app = express();
 const Menu = require('./config');
 const { google } = require('googleapis');
 const { setDoc,doc } = require('firebase/firestore');
-const serviceAccountKeyFile = "./iitjmessmenu-bfcf5d7e0b8e.json"
+const serviceAccountKeyFile = ".secret_files/iitjmessmenu-bfcf5d7e0b8e.json"
 
 async function _getGoogleSheetClient() {
   const auth = new google.auth.GoogleAuth({
